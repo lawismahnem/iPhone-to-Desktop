@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iPhone to PC Transfer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f0f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+        .upload-area {
+            border: 2px dashed #007aff;
+            border-radius: 12px;
+            padding: 2rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 1rem;
+        }
+        .upload-area:active {
+            background-color: #e5f1ff;
+        }
+        .upload-icon {
+            font-size: 48px;
+            color: #007aff;
+            margin-bottom: 10px;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .btn {
+            background-color: #007aff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+        .btn:disabled {
+            background-color: #ccc;
+        }
+        #status {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #666;
+            min-height: 1.2em;
+        }
+        .progress-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 8px;
+            margin-top: 1rem;
+            height: 10px;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #34c759;
+            transition: width 0.2s;
+        }
+        .file-list {
+            margin-top: 1rem;
+            text-align: left;
+            font-size: 0.85rem;
+            color: #555;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Send Files to PC</h1>
+    
+    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">☁️</div>
+        <p>Tap to select Photos or Videos</p>
+    </div>
+
+    <input type="file" id="fileInput" multiple onchange="handleFiles(this.files)">
+
+    <div class="file-list" id="fileList"></div>
+
+    <!-- Removed global progress container -->
+    
+    <div id="status"></div>
+</div>
+
+<script>
+    function truncateFilename(name, maxLength = 25) {
+        if (name.length <= maxLength) return name;
+        const lastDot = name.lastIndexOf('.');
+        if (lastDot === -1) return name.substring(0, maxLength - 3) + '...';
+        
+        const ext = name.substring(lastDot);
+        const base = name.substring(0, lastDot);
+        const charsToKeep = maxLength - ext.length - 3;
+        
+        if (charsToKeep <= 0) return name.substring(0, maxLength - 3) + '...';
+        return base.substring(0, charsToKeep) + '...' + ext;
+    }
+
+    function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    async function handleFiles(files) {
+        if (files.length === 0) return;
+
+        const fileListDiv = document.getElementById('fileList');
+        const statusDiv = document.getElementById('status');
+        
+        // Clear previous list
+        fileListDiv.innerHTML = '';
+        statusDiv.innerText = "";
+
+        // Create UI elements for all files first
+        const fileUIs = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            const row = document.createElement('div');
+            row.style.marginBottom = "10px";
+            row.style.background = "#f9f9f9";
+            row.style.padding = "10px";
+            row.style.borderRadius = "8px";
+            row.style.border = "1px solid #eee";
+            
+            const header = document.createElement('div');
+            header.style.display = "flex";
+            header.style.justifyContent = "space-between";
+            header.style.marginBottom = "5px";
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.innerText = `${truncateFilename(file.name)} (${formatBytes(file.size)})`;
+            nameSpan.style.fontWeight = "bold";
+            nameSpan.style.fontSize = "0.9rem";
+            nameSpan.style.overflow = "hidden";
+            nameSpan.style.textOverflow = "ellipsis";
+            nameSpan.style.whiteSpace = "nowrap";
+            nameSpan.style.marginRight = "10px";
+            
+            const statusSpan = document.createElement('span');
+            statusSpan.innerText = "Waiting...";
+            statusSpan.style.fontSize = "0.8rem";
+            statusSpan.style.color = "#666";
+            statusSpan.style.flexShrink = "0";
+
+            header.appendChild(nameSpan);
+            header.appendChild(statusSpan);
+            
+            const progressBg = document.createElement('div');
+            progressBg.style.width = "100%";
+            progressBg.style.height = "6px";
+            progressBg.style.background = "#e0e0e0";
+            progressBg.style.borderRadius = "3px";
+            progressBg.style.overflow = "hidden";
+            
+            const progressFill = document.createElement('div');
+            progressFill.style.width = "0%";
+            progressFill.style.height = "100%";
+            progressFill.style.background = "#007aff";
+            progressFill.style.transition = "width 0.2s";
+
+            progressBg.appendChild(progressFill);
+            
+            row.appendChild(header);
+            row.appendChild(progressBg);
+            fileListDiv.appendChild(row);
+
+            fileUIs.push({
+                file: file,
+                statusSpan: statusSpan,
+                progressFill: progressFill
+            });
+        }
+
+        // Process uploads sequentially
+        for (let i = 0; i < fileUIs.length; i++) {
+            const item = fileUIs[i];
+            item.statusSpan.innerText = "Uploading...";
+            try {
+                await uploadSingleFile(item.file, item.progressFill, item.statusSpan);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+        
+        statusDiv.innerText = "All uploads finished!";
+        statusDiv.style.color = "#34c759";
+        
+        // Clear input so same files can be selected again if needed
+        document.getElementById('fileInput').value = "";
+    }
+
+    function uploadSingleFile(file, progressFill, statusSpan) {
+        return new Promise((resolve, reject) => {
+            const formData = new FormData();
+            formData.append('files[]', file);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/upload', true);
+
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    progressFill.style.width = percentComplete + '%';
+                    statusSpan.innerText = `${formatBytes(e.loaded)} / ${formatBytes(e.total)} (${Math.round(percentComplete)}%)`;
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    progressFill.style.background = "#34c759";
+                    progressFill.style.width = "100%";
+                    statusSpan.innerText = "✅ Done";
+                    statusSpan.style.color = "#34c759";
+                    resolve();
+                } else {
+                    progressFill.style.background = "red";
+                    statusSpan.innerText = "❌ Failed";
+                    statusSpan.style.color = "red";
+                    resolve(); // Resolve anyway to continue queue
+                }
+            };
+
+            xhr.onerror = function() {
+                progressFill.style.background = "red";
+                statusSpan.innerText = "❌ Error";
+                statusSpan.style.color = "red";
+                resolve();
+            };
+
+            xhr.send(formData);
+        });
+    }
+</script>
+
+</body>
+</html>
