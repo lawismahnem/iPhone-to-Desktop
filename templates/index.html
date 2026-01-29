@@ -91,6 +91,21 @@
             color: #555;
             max-height: 150px;
             overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+        @media (max-width: 480px) {
+            body {
+                justify-content: flex-start;
+                padding: 10px;
+            }
+            .container {
+                padding: 1.5rem 1rem;
+                max-width: 100%;
+                box-sizing: border-box;
+            }
+            .file-list {
+                max-height: 50vh;
+            }
         }
     </style>
 </head>
@@ -203,13 +218,15 @@
             fileUIs.push({
                 file: file,
                 statusSpan: statusSpan,
-                progressFill: progressFill
+                progressFill: progressFill,
+                row: row
             });
         }
 
         // Process uploads sequentially
         for (let i = 0; i < fileUIs.length; i++) {
             const item = fileUIs[i];
+            item.row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             item.statusSpan.innerText = "Uploading...";
             try {
                 await uploadSingleFile(item.file, item.progressFill, item.statusSpan);
